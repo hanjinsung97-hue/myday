@@ -196,13 +196,22 @@
   header .top{flex-wrap:wrap}
   header .seg{flex:1 1 100%;margin-top:10px}
   header .seg button{flex:1;white-space:nowrap;padding:7px 4px}
+  .gear{position:absolute;right:12px;top:calc(10px + env(safe-area-inset-top));border:0;background:none;font-size:22px;cursor:pointer;padding:4px;z-index:2}
+  .sset{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .shd{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .srow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .srow b{font-size:15px;font-weight:500;display:block}.srow small{font-size:12px;color:var(--muted)}
+  .tgl{flex:none;width:50px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;cursor:pointer;transition:background .2s}
+  .tgl i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
+  .tgl.on{background:var(--accent)}.tgl.on i{left:23px}
 </style>
 </head>
 <body>
-<header id="hdr">
+<header id="hdr" style="position:sticky">
+  <button id="setBtn" class="gear" aria-label="설정">⚙️</button>
   <div class="top">
     <div>
-      <h1>나의 일상 <button id="lockBtn" aria-label="잠금 설정" style="border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;vertical-align:2px">🔓</button><button id="memoBtn" aria-label="메모" style="border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;vertical-align:2px">📝</button><button id="acctBtn" aria-label="계정" style="border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;vertical-align:2px">👤</button></h1>
+      <h1>나의 일상 <button id="memoBtn" aria-label="메모" style="border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;vertical-align:2px">📝</button></h1>
       <div class="sub" id="weekLabel"></div>
     </div>
     <div class="seg" role="tablist">
@@ -212,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><button class="nbabtn" id="nbaBtn">🏀 NBA</button><span class="sync"><span id="sync"></span> · F1</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F2</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -311,15 +320,27 @@
 </div>
 <div class="scrim" id="acctSheet">
   <div class="sheet">
-    <h2>계정</h2>
-    <div class="hint" id="acctInfo" style="margin-bottom:14px"></div>
-    <div class="actions" style="flex-direction:column">
+    <h2>설정</h2>
+    <div class="sset">
+      <div class="shd">일정 표시</div>
+      <div class="srow"><div><b>🏀 NBA 경기 일정</b><small>주간·월간에 매버릭스 경기 표시</small></div><button type="button" class="tgl" id="nbaBtn" role="switch"><i></i></button></div>
+    </div>
+    <div class="sset">
+      <div class="shd">앱 잠금</div>
+      <div class="srow"><div><b>비밀번호 잠금</b><small id="lockState">꺼짐</small></div><button type="button" class="tgl" id="lockTgl" role="switch"><i></i></button></div>
+      <button type="button" class="btn ghost" id="lkChange2" style="width:100%;margin-top:8px">비밀번호 변경</button>
+    </div>
+    <div class="sset">
+      <div class="shd">계정·백업</div>
+      <div class="hint" id="acctInfo" style="margin:0 0 10px"></div>
+    <div class="actions" style="flex-direction:column;margin-top:0">
       <button type="button" class="btn ghost" id="expBtn">데이터 내보내기 (백업 파일 저장)</button>
       <button type="button" class="btn ghost" id="impBtn">데이터 가져오기 (백업 파일 열기)</button>
       <input type="file" id="impFile" accept=".json,application/json" style="display:none">
       <button type="button" class="btn ghost" id="logoutBtn" style="color:#d0453a">로그아웃</button>
-      <button type="button" class="btn primary" id="acctClose">닫기</button>
     </div>
+    </div>
+    <button type="button" class="btn primary" id="acctClose" style="width:100%;margin-top:14px">닫기</button>
   </div>
 </div>
 <div class="scrim" id="lockSheet">
@@ -741,7 +762,7 @@
   $("scrim").onclick=e=>{ if(e.target===$("scrim")) closeForm(); };
   $("fab").onclick=()=>{ if(view==="month") openEvent(null,selDate); else if(view==="exp") openExp(null); else openForm(null); };
 
-  function toast(t){ const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),1400); }
+  function toast(t,ms){ const el=$("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),ms||1400); }
 
   // ---------- PIN lock ----------
   let unlocked=false, lockMode="unlock", entry="", firstPin="";
@@ -769,7 +790,7 @@
     $("lock").classList.add("show");
   }
   function hideLock(){ $("lock").classList.remove("show"); entry=""; }
-  function updateLockBtn(){ $("lockBtn").textContent = state.pin ? "🔒" : "🔓"; }
+  function updateLockBtn(){ $("lockTgl").classList.toggle("on",!!state.pin); $("lockState").textContent=state.pin?"켜짐 · 앱을 열 때 비밀번호를 물어봐요":"꺼짐"; $("lkChange2").style.display=state.pin?"":"none"; }
   async function press(k){
     if(k==="x"){ if(lockMode!=="unlock") hideLock(); return; }
     if(k==="<"){ entry=entry.slice(0,-1); drawDots(); return; }
@@ -792,10 +813,6 @@
   document.addEventListener("keydown",e=>{ if(!$("lock").classList.contains("show")) return;
     if(/^[0-9]$/.test(e.key)) press(e.key); else if(e.key==="Backspace") press("<"); else if(e.key==="Escape") press("x"); });
   // lock settings sheet (simple choice)
-  $("lockBtn").onclick=()=>{
-    if(!state.pin){ showLock("set1"); return; }
-    $("lockSheet").classList.add("open");
-  };
   $("lkChange").onclick=()=>{ $("lockSheet").classList.remove("open"); showLock("verifyChange"); };
   $("lkOff").onclick=()=>{ $("lockSheet").classList.remove("open"); showLock("verifyOff"); };
   $("lkClose").onclick=()=>$("lockSheet").classList.remove("open");
@@ -863,8 +880,7 @@
     }catch(e){}
   }
 
-  function updNbaBtn(){ const b=$("nbaBtn"); b.classList.toggle("off",!!state.hideNba); b.textContent=state.hideNba?"🏀 NBA 숨김":"🏀 NBA 표시"; 
-    b.style.display = state.events.some(isNba) ? "" : "none"; }
+  function updNbaBtn(){ $("nbaBtn").classList.toggle("on",!state.hideNba); }
   $("nbaBtn").onclick=()=>{ state.hideNba=!state.hideNba; save(); updNbaBtn(); render(); toast(state.hideNba?"NBA 일정을 숨겼어요":"NBA 일정을 다시 보여줘요"); };
   updNbaBtn();
   // ---------- fixed expenses ----------
@@ -920,7 +936,9 @@
   };
   $("gLogin").onclick=()=>{ window.appUI.onLogin && window.appUI.onLogin(); };
   $("localMode").onclick=()=>{ try{localStorage.setItem("naui-local-mode","1");}catch(e){} window.appUI.hideLogin(); window.appUI.setAccount("로그인 안 함 · 이 기기에만 저장돼요"); setSync("이 기기에 저장"); $("logoutBtn").textContent="구글 계정으로 로그인"; };
-  $("acctBtn").onclick=()=>$("acctSheet").classList.add("open");
+  $("setBtn").onclick=()=>{ updNbaBtn(); updateLockBtn(); $("acctSheet").classList.add("open"); };
+  $("lockTgl").onclick=()=>{ $("acctSheet").classList.remove("open"); showLock(state.pin?"verifyOff":"set1"); };
+  $("lkChange2").onclick=()=>{ $("acctSheet").classList.remove("open"); showLock("verifyChange"); };
   $("acctClose").onclick=()=>$("acctSheet").classList.remove("open");
   $("acctSheet").onclick=e=>{ if(e.target===$("acctSheet")) $("acctSheet").classList.remove("open"); };
   $("logoutBtn").onclick=()=>{ $("acctSheet").classList.remove("open"); window.appUI.onLogout && window.appUI.onLogout(); };
@@ -946,6 +964,28 @@
       $("acctSheet").classList.remove("open"); toast("백업을 불러왔어요");
     }catch(e){ toast("불러오기 실패: "+e.message); }
   };
+
+  // ---------- back button: week = home, double back to exit ----------
+  let lastBack=0;
+  try{ history.replaceState({naui:"base"},""); history.pushState({naui:"guard"},""); }catch(e){}
+  function closeTopOverlay(){
+    const sheets=["xscrim","escrim","scrim","acctSheet","lockSheet"];
+    for(const id of sheets){ const el=$(id); if(el && el.classList.contains("open")){ if(id==="scrim") closeForm(); else if(id==="escrim") closeEvent(); else if(id==="xscrim") closeExp(); else el.classList.remove("open"); return true; } }
+    const lk=$("lock"); if(lk.classList.contains("show") && lockMode!=="unlock"){ hideLock(); return true; }
+    const pm=$("penMemo"); if(pm.classList.contains("show")){ if($("nEd").style.display==="flex") showList(); else pm.classList.remove("show"); return true; }
+    return false;
+  }
+  window.addEventListener("popstate",()=>{
+    const onLockOrLogin = ($("lock").classList.contains("show") && lockMode==="unlock") || $("login").classList.contains("show");
+    if(!onLockOrLogin){
+      if(closeTopOverlay()){ history.pushState({naui:"guard"},""); return; }
+      if(view!=="week"){ setView("week"); history.pushState({naui:"guard"},""); return; }
+    }
+    const now=Date.now();
+    if(now-lastBack<2000){ $("toast").classList.remove("show"); history.back(); return; }
+    lastBack=now; toast("한 번 더 누르면 앱이 종료돼요",2000);
+    history.pushState({naui:"guard"},"");
+  });
 
   render();
   // scroll near current hour
