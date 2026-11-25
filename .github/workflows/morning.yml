@@ -1,0 +1,17 @@
+name: 아침 알림
+on:
+  schedule:
+    - cron: "50 23 * * *"   # 매일 08:50 (한국 시간) 시작 → 보통 9시 전후 도착
+  workflow_dispatch: {}      # Actions 화면에서 "Run workflow"로 바로 테스트
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install firebase-admin
+      - run: python morning.py
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
