@@ -7,4 +7,4 @@ export const firebaseConfig = {
   messagingSenderId: "807971607650",
   appId: "1:807971607650:web:d6c7451d4d2b6f73a42d3b"
 };
-"BDJ-Rii_XZpIwA7b9VKOIN7EO959lTT0ZitGQx5xAN4Y7u0QERl7PUbTDG8_f2wIXJ98pu24GwLJm6MlT7vVm0c";
+export const vapidKey = "BDJ-Rii_XZpIwA7b9VKOIN7EO959lTT0ZitGQx5xAN4Y7u0QERl7PUbTDG8_f2wIXJ98pu24GwLJm6MlT7vVm0c";
