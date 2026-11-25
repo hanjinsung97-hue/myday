@@ -221,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F2</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F3</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -329,6 +329,10 @@
       <div class="shd">앱 잠금</div>
       <div class="srow"><div><b>비밀번호 잠금</b><small id="lockState">꺼짐</small></div><button type="button" class="tgl" id="lockTgl" role="switch"><i></i></button></div>
       <button type="button" class="btn ghost" id="lkChange2" style="width:100%;margin-top:8px">비밀번호 변경</button>
+    </div>
+    <div class="sset" id="pushSet" style="display:none">
+      <div class="shd">알림</div>
+      <div class="srow"><div><b>☀️ 아침 알림</b><small id="pushState">매일 오전 9시쯤 오늘·내일 일정을 알려줘요</small></div><button type="button" class="tgl" id="pushTgl" role="switch"><i></i></button></div>
     </div>
     <div class="sset">
       <div class="shd">계정·백업</div>
@@ -936,7 +940,7 @@
   };
   $("gLogin").onclick=()=>{ window.appUI.onLogin && window.appUI.onLogin(); };
   $("localMode").onclick=()=>{ try{localStorage.setItem("naui-local-mode","1");}catch(e){} window.appUI.hideLogin(); window.appUI.setAccount("로그인 안 함 · 이 기기에만 저장돼요"); setSync("이 기기에 저장"); $("logoutBtn").textContent="구글 계정으로 로그인"; };
-  $("setBtn").onclick=()=>{ updNbaBtn(); updateLockBtn(); $("acctSheet").classList.add("open"); };
+  $("setBtn").onclick=()=>{ updNbaBtn(); updateLockBtn(); refreshPush(); $("acctSheet").classList.add("open"); };
   $("lockTgl").onclick=()=>{ $("acctSheet").classList.remove("open"); showLock(state.pin?"verifyOff":"set1"); };
   $("lkChange2").onclick=()=>{ $("acctSheet").classList.remove("open"); showLock("verifyChange"); };
   $("acctClose").onclick=()=>$("acctSheet").classList.remove("open");
@@ -987,6 +991,24 @@
     history.pushState({naui:"guard"},"");
   });
 
+  // ---------- morning push ----------
+  let pushOn=false, pushBusy=false;
+  async function refreshPush(){
+    if(!window.appPush) return; $("pushSet").style.display="";
+    try{ pushOn=await window.appPush.status(); }catch(e){ pushOn=false; }
+    $("pushTgl").classList.toggle("on",pushOn);
+  }
+  window.appUI.pushReady=refreshPush;
+  $("pushTgl").onclick=async()=>{
+    if(!window.appPush||pushBusy) return; pushBusy=true; $("pushState").textContent="설정 중…";
+    try{
+      if(pushOn){ await window.appPush.disable(); pushOn=false; toast("아침 알림을 껐어요"); }
+      else { await window.appPush.enable(); pushOn=true; toast("아침 알림을 켰어요"); }
+      $("pushState").textContent="매일 오전 9시쯤 오늘·내일 일정을 알려줘요";
+    }catch(e){ $("pushState").textContent=e.message||String(e); }
+    $("pushTgl").classList.toggle("on",pushOn); pushBusy=false;
+  };
+
   render();
   // scroll near current hour
   setTimeout(()=>{ const h=new Date().getHours(); if(h>START_H+1) window.scrollTo({top:(h-START_H-1)*44, behavior:"instant"}); },50);
@@ -1003,7 +1025,7 @@
     if(window.__mockFirebase){ fb=window.__mockFirebase; }
     else{
       const V="10.14.1", B="https://www.gstatic.com/firebasejs/"+V+"/";
-      const cfg=(await import("./firebase-config.js")).firebaseConfig;
+      const cfgMod=await import("./firebase-config.js"); const cfg=cfgMod.firebaseConfig;
       if(!cfg || !cfg.apiKey || cfg.apiKey.startsWith("여기에")) throw new Error("config");
       const [app, auth, fs] = await Promise.all([import(B+"firebase-app.js"), import(B+"firebase-auth.js"), import(B+"firebase-firestore.js")]);
       const a=app.initializeApp(cfg), au=auth.getAuth(a), db=fs.getFirestore(a);
@@ -1013,7 +1035,23 @@
         logout:()=>auth.signOut(au),
         redirect:()=>auth.getRedirectResult(au).catch(()=>null),
         docApi:(uid)=>({ collection:()=>({ doc:(k)=>{ const ref=fs.doc(db,"users",uid,"data",k);
-          return { get:async()=>{ const s=await fs.getDoc(ref); return {data:()=>s.exists()?s.data():null}; }, set:(d)=>fs.setDoc(ref,d) }; } }) })
+          return { get:async()=>{ const s=await fs.getDoc(ref); return {data:()=>s.exists()?s.data():null}; }, set:(d)=>fs.setDoc(ref,d) }; } }) }),
+        push:(uid)=>{ const ref=fs.doc(db,"users",uid,"data","push");
+          return {
+            status:async()=>{ const s=await fs.getDoc(ref); const d=s.exists()?s.data():null; return !!(d&&d.enabled) && ("Notification" in window) && Notification.permission==="granted"; },
+            enable:async()=>{
+              const vk=cfgMod.vapidKey; if(!vk || vk.startsWith("여기에")) throw new Error("firebase-config.js에 vapidKey가 없어요 (안내서 1단계)");
+              const m=await import(B+"firebase-messaging.js");
+              if(!(await m.isSupported())) throw new Error("이 브라우저는 알림을 지원하지 않아요");
+              if(!("Notification" in window)) throw new Error("알림을 지원하지 않아요");
+              const perm=await Notification.requestPermission(); if(perm!=="granted") throw new Error("알림 권한이 거부됐어요. 휴대폰 설정에서 이 앱 알림을 허용해 주세요");
+              const reg=await navigator.serviceWorker.ready;
+              const token=await m.getToken(m.getMessaging(a),{vapidKey:vk, serviceWorkerRegistration:reg});
+              if(!token) throw new Error("알림 토큰을 받지 못했어요");
+              await fs.setDoc(ref,{enabled:true, tokens:fs.arrayUnion(token), hour:9, tz:"Asia/Seoul", updated:Date.now()},{merge:true});
+            },
+            disable:()=>fs.setDoc(ref,{enabled:false, updated:Date.now()},{merge:true})
+          }; }
       };
     }
   }catch(e){
@@ -1033,6 +1071,7 @@
         try{ localStorage.removeItem("naui-local-mode"); }catch(e){}
         ui.hideLogin(); ui.setAccount((user.email||user.displayName||"구글 계정")+" 로 로그인됨 · 자동 저장·동기화");
         if(!connected){ connected=true; window.appConnect && window.appConnect(fb.docApi(user.uid), user.uid); }
+        if(fb.push){ window.appPush=fb.push(user.uid); ui.pushReady && ui.pushReady(); }
       } else if(local){ ui.hideLogin(); ui.setAccount("로그인 안 함 · 이 기기에만 저장돼요"); document.getElementById("logoutBtn").textContent="구글 계정으로 로그인"; }
       else ui.showLogin("로그인하면 휴대폰·PC 어디서나 같은 일정이 보여요.", true);
     });
