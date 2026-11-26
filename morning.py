@@ -61,7 +61,25 @@ def compose(tt, now=None):
     return title, "\n".join(lines)
 
 
+def wait_until_target():
+    """예약 실행이면 정해진 시각(WAIT_UNTIL, 예: 08:00)까지 기다렸다가 보내요."""
+    import time
+    target = os.environ.get("WAIT_UNTIL", "").strip()
+    if not target:
+        return
+    h, m = map(int, target.split(":"))
+    now = datetime.now(KST)
+    t = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    wait = (t - now).total_seconds()
+    if 0 < wait < 3 * 3600:
+        print(f"{target}까지 {int(wait // 60)}분 {int(wait % 60)}초 기다려요")
+        time.sleep(wait)
+    else:
+        print(f"이미 {target}이 지나서 바로 보내요 (지금 {now:%H:%M})")
+
+
 def main():
+    wait_until_target()
     import firebase_admin
     from firebase_admin import credentials, firestore, messaging
 

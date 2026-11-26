@@ -221,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F3</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F4</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -332,7 +332,7 @@
     </div>
     <div class="sset" id="pushSet" style="display:none">
       <div class="shd">알림</div>
-      <div class="srow"><div><b>☀️ 아침 알림</b><small id="pushState">매일 오전 9시쯤 오늘·내일 일정을 알려줘요</small></div><button type="button" class="tgl" id="pushTgl" role="switch"><i></i></button></div>
+      <div class="srow"><div><b>☀️ 아침 알림</b><small id="pushState">매일 오전 8시에 오늘·내일 일정을 알려줘요</small></div><button type="button" class="tgl" id="pushTgl" role="switch"><i></i></button></div>
     </div>
     <div class="sset">
       <div class="shd">계정·백업</div>
@@ -1004,7 +1004,7 @@
     try{
       if(pushOn){ await window.appPush.disable(); pushOn=false; toast("아침 알림을 껐어요"); }
       else { await window.appPush.enable(); pushOn=true; toast("아침 알림을 켰어요"); }
-      $("pushState").textContent="매일 오전 9시쯤 오늘·내일 일정을 알려줘요";
+      $("pushState").textContent="매일 오전 8시에 오늘·내일 일정을 알려줘요";
     }catch(e){ $("pushState").textContent=e.message||String(e); }
     $("pushTgl").classList.toggle("on",pushOn); pushBusy=false;
   };
