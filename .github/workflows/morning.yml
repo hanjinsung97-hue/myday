@@ -1,7 +1,7 @@
 name: 아침 알림
 on:
   schedule:
-    - cron: "50 23 * * *"   # 매일 08:50 (한국 시간) 시작 → 보통 9시 전후 도착
+    - cron: "13 22 * * *"   # 매일 07:13 (한국 시간) 미리 시작 → 08:00까지 기다렸다 보냄
   workflow_dispatch: {}      # Actions 화면에서 "Run workflow"로 바로 테스트
 jobs:
   send:
@@ -15,3 +15,4 @@ jobs:
       - run: python morning.py
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          WAIT_UNTIL: ${{ github.event_name == 'schedule' && '08:00' || '' }}
