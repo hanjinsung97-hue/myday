@@ -221,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F6</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · V1</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -593,7 +593,10 @@
     }
     const links=[
       ["🏀","ESPN 매버릭스 부상자 명단","댈러스 선수만 · 상태와 복귀 예정일","https://www.espn.com/nba/team/injuries/_/name/dal"],
-      ["📊","Basketball Reference 2026-27 댈러스","시즌 성적 · 로스터 · 선수 기록","https://www.basketball-reference.com/teams/DAL/2027.html"]
+      ["📊","Basketball Reference 2026-27 댈러스","시즌 성적 · 로스터 · 선수 기록","https://www.basketball-reference.com/teams/DAL/2027.html"],
+      ["📈","Dunks & Threes · EPM","선수 영향력 지표(EPM) 순위","https://dunksandthrees.com/epm"],
+      ["🔀","databallr · 댈러스 WOWY","선수 조합별 출전·결장 효과 (2026-27)","https://databallr.com/wowy?team=DAL&from=2027&to=2027"],
+      ["🧮","BBall Index","선수 세부 분석 지표","https://www.bball-index.com/nba"]
     ];
     const lc=document.createElement("div"); lc.className="card";
     lc.innerHTML="<h3>바로가기</h3>"+links.map(l=>`<a class="lnk" href="${l[3]}" target="_blank" rel="noopener"><div class="ic">${l[0]}</div><div><div class="tt">${l[1]}</div><div class="ss">${l[2]}</div></div><span class="ar">↗</span></a>`).join("");
