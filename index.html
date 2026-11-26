@@ -221,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F4</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · F6</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -285,6 +285,7 @@
     <label for="ememo">메모</label>
     <textarea id="ememo" placeholder="선택 사항" maxlength="300"></textarea>
     <label class="ddrow" for="edday"><input type="checkbox" id="edday"> <span><b>D-day로 표시</b><br><small>월간 화면 위에 남은 날짜를 보여줘요</small></span></label>
+    <label class="ddrow" for="emonth"><input type="checkbox" id="emonth" checked> <span><b>월간 달력에 표시</b><br><small>끄면 주간 시간표에만 보여요</small></span></label>
     <div class="err" id="eerr" style="margin-top:12px"></div>
     <div class="actions">
       <button type="button" class="btn danger" id="edel">삭제</button>
@@ -392,6 +393,11 @@
 
   const fmt = m => { const h=Math.floor(m/60), mm=m%60; return String(h).padStart(2,"0")+":"+String(mm).padStart(2,"0"); };
   const isNba = ev => String(ev.id).startsWith("mavs");
+  // 주간에서 넣은 "이번 주만" 일정(src:"week")은 월간에 안 보여요
+  const monthEvents = () => visEvents().filter(ev=>ev.src!=="week");
+  // 예전에 주간에서 "이번 주만"으로 넣은 일정 표시 (F6, 한 번만 바뀜)
+  var OLD_WEEK_IDS=["mwu5gishh7eff","mwu5hn2h08q0r","mwu5i4sl6m8gt","mwu5iqonjw58y","mwu5jbnda58h2","mwu5k4tvgt0jf","mwu5ks0b4hgqb"];
+  function migrateWeekSrc(){ let n=0; (state.events||[]).forEach(ev=>{ if(!ev.src && OLD_WEEK_IDS.includes(ev.id)){ ev.src="week"; n++; } }); return n; }
   const visEvents = () => state.hideNba ? state.events.filter(ev=>!isNba(ev)) : state.events;
   const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const isDone = t => t.doneWeek === weekKey;
@@ -421,6 +427,7 @@
 
   const local = lsLoad();
   if(local && Array.isArray(local.tasks)) state = { tasks: local.tasks, events: Array.isArray(local.events) ? local.events : [], pin: local.pin||null, hideNba: !!local.hideNba, expenses: Array.isArray(local.expenses) ? local.expenses : [] };
+  try{ migrateWeekSrc(); }catch(e){}
   setSync("이 기기에 저장");
 
   (async function connect(){
@@ -436,7 +443,7 @@
       if(data && data.data && Array.isArray(data.data.tasks)) data = data.data;
       dbDoc = doc;
       if(data && Array.isArray(data.tasks)){
-        state = JSON.parse(JSON.stringify({ tasks: data.tasks, events: Array.isArray(data.events) ? data.events : [], pin: data.pin||null, hideNba: !!data.hideNba, expenses: Array.isArray(data.expenses) ? data.expenses : [] })); lsSave(); render(); updNbaBtn();
+        state = JSON.parse(JSON.stringify({ tasks: data.tasks, events: Array.isArray(data.events) ? data.events : [], pin: data.pin||null, hideNba: !!data.hideNba, expenses: Array.isArray(data.expenses) ? data.expenses : [] })); if(migrateWeekSrc()) save(); lsSave(); render(); updNbaBtn();
         if(state.pin && !unlocked) showLock("unlock"); else if(!state.pin && lockMode==="unlock") hideLock(); updateLockBtn();
       } else if(state.tasks.length || state.events.length){
         flush();
@@ -525,7 +532,7 @@
     nav.innerHTML=`<button id="mPrev" aria-label="이전 달">‹</button><b>${y}년 ${m+1}월</b><div style="display:flex;gap:6px"><button class="tday" id="mToday">오늘</button><button id="mNext" aria-label="다음 달">›</button></div>`;
     board.appendChild(nav);
     const t0=new Date(todayKey+"T00:00");
-    const dds=visEvents().filter(ev=>ev.dday).map(ev=>({ev,n:Math.round((new Date(ev.date+"T00:00")-t0)/86400000)}))
+    const dds=monthEvents().filter(ev=>ev.dday).map(ev=>({ev,n:Math.round((new Date(ev.date+"T00:00")-t0)/86400000)}))
       .filter(x=>x.n>=-30).sort((a,b)=>(a.n<0)-(b.n<0)||Math.abs(a.n)-Math.abs(b.n));
     if(dds.length){
       const wrap=document.createElement("div"); wrap.className="dds";
@@ -542,7 +549,7 @@
       const d=new Date(start); d.setDate(start.getDate()+i); const k=ymd(d), wd=i%7;
       const c=document.createElement("div");
       c.className="cell"+(d.getMonth()!==m?" out":"")+(k===todayKey?" today":"")+(k===selDate?" sel":"")+(wd===5?" sat":"")+(wd===6?" sun":"");
-      const evs=visEvents().filter(ev=>ev.date===k).sort(evSort);
+      const evs=monthEvents().filter(ev=>ev.date===k).sort(evSort);
       c.innerHTML=`<div class="num">${d.getDate()}</div>`+evs.slice(0,2).map(ev=>`<div class="ev" style="background:${ev.color}">${esc(ev.title)}</div>`).join("")+(evs.length>2?`<div class="more">+${evs.length-2}</div>`:"");
       c.onclick=()=>{ if(selDate===k){ openEvent(null,k); return; } selDate=k; if(d.getMonth()!==m){ mCursor=new Date(d.getFullYear(),d.getMonth(),1); } render(); };
       grid.appendChild(c);
@@ -557,15 +564,13 @@
     const sd=new Date(selDate+"T00:00"), swd=(sd.getDay()+6)%7;
     const box=document.createElement("div"); box.className="dlist";
     box.innerHTML=`<h3>${sd.getMonth()+1}월 ${sd.getDate()}일 (${DAYS[swd]})</h3>`;
-    const evs=visEvents().filter(ev=>ev.date===selDate).sort(evSort);
+    const evs=monthEvents().filter(ev=>ev.date===selDate).sort(evSort);
     if(!evs.length){ const e=document.createElement("div"); e.className="ss"; e.style.cssText="font-size:13px;color:var(--muted)"; e.textContent="등록된 일정이 없어요."; box.appendChild(e); }
     evs.forEach(ev=>{
       const it=document.createElement("div"); it.className="ditem";
       it.innerHTML=`<div class="bar" style="background:${ev.color}"></div><div style="flex:1;min-width:0"><div class="tt">${esc(ev.title)}</div><div class="ss">${evTime(ev)}${ev.memo?" · "+esc(ev.memo):""}</div></div>`;
       it.onclick=()=>openEvent(ev); box.appendChild(it);
     });
-    const routine=state.tasks.filter(t=>t.day===swd).length;
-    if(routine){ const h=document.createElement("div"); h.className="hint"; h.textContent=`매주 ${DAYS[swd]}요일 시간표 할 일 ${routine}개`; box.appendChild(h); }
     const add=document.createElement("button"); add.className="addline"; add.textContent="+ 이 날짜에 일정 추가"; add.onclick=()=>openEvent(null,selDate); box.appendChild(add);
     below.appendChild(box);
   }
@@ -659,10 +664,10 @@
     eEditing=ev||null; $("eerr").textContent="";
     if(ev){
       $("eTitle").textContent="일정 수정"; $("etitle").value=ev.title; $("edate").value=ev.date; $("ememo").value=ev.memo||"";
-      es.value=ev.start==null?"":ev.start; ee.value=ev.end==null?600:ev.end; eColor=ev.color; $("edel").style.display=""; $("edday").checked=!!ev.dday;
+      es.value=ev.start==null?"":ev.start; ee.value=ev.end==null?600:ev.end; eColor=ev.color; $("edel").style.display=""; $("edday").checked=!!ev.dday; $("emonth").checked=ev.src!=="week";
     } else {
       $("eTitle").textContent="일정 추가"; $("etitle").value=""; $("ememo").value=""; $("edate").value=dateKey||selDate;
-      es.value=""; ee.value=600; eColor=COLORS[1]; $("edel").style.display="none"; $("edday").checked=false;
+      es.value=""; ee.value=600; eColor=COLORS[1]; $("edel").style.display="none"; $("edday").checked=false; $("emonth").checked=true;
     }
     syncEnd(); drawEColors(); $("escrim").classList.add("open");
     if(!ev) setTimeout(()=>$("etitle").focus(),50);
@@ -676,7 +681,7 @@
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ $("eerr").textContent="날짜를 골라 주세요."; return; }
     const allDay=es.value==="", s=allDay?null:+es.value, en=allDay?null:+ee.value;
     if(!allDay && en<=s){ $("eerr").textContent="종료 시간이 시작보다 늦어야 해요."; return; }
-    const data={title,date,start:s,end:en,color:eColor,memo:$("ememo").value.trim(),dday:$("edday").checked};
+    const data={title,date,start:s,end:en,color:eColor,memo:$("ememo").value.trim(),dday:$("edday").checked,src:$("emonth").checked?"month":"week"};
     if(eEditing) Object.assign(eEditing,data); else state.events.push(Object.assign({id:uid()},data));
     selDate=date; const d=new Date(date+"T00:00"); if(view==="month") mCursor=new Date(d.getFullYear(),d.getMonth(),1);
     save(); closeEvent(); render(); toast("저장했어요");
@@ -732,7 +737,7 @@
 
   let rep="weekly";
   function setRep(r){ rep=r; document.querySelectorAll("#rep button").forEach(b=>b.classList.toggle("on",b.dataset.r===r));
-    $("repHint").textContent = r==="weekly" ? "📌 매주 같은 요일·시간에 반복돼요." : "이번 주 날짜에만 들어가요. 월간 달력에도 보여요."; }
+    $("repHint").textContent = r==="weekly" ? "📌 매주 같은 요일·시간에 반복돼요." : "이번 주 날짜에만 들어가요. 월간 달력에는 안 보여요."; }
   document.querySelectorAll("#rep button").forEach(b=>b.onclick=()=>setRep(b.dataset.r));
   $("save").onclick=()=>{ try{ $("form").onsubmit({preventDefault(){}}); }catch(x){ $("err").textContent="오류: "+x.message; } };
   $("form").onsubmit=e=>{
@@ -743,7 +748,7 @@
     if(en<=s){ $("err").textContent="종료 시간이 시작보다 늦어야 해요."; return; }
     const memo=$("memo").value.trim();
     if(!editing && rep==="once"){
-      fDays.forEach(d=>state.events.push({id:uid(),title,date:ymd(dateOf(d)),start:s,end:en,color:fColor,memo}));
+      fDays.forEach(d=>state.events.push({id:uid(),title,date:ymd(dateOf(d)),start:s,end:en,color:fColor,memo,src:"week"}));
       save(); closeForm(); render(); toast("이번 주에만 추가했어요"); return;
     }
     for(const d of fDays){ const o=overlaps(d,s,en,editing&&editing.id); if(o){ $("err").textContent=`${DAYS[d]}요일 ${fmt(o.start)}–${fmt(o.end)} "${o.title}"와 겹쳐요.`; return; } }
