@@ -221,7 +221,7 @@
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · V1.2</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · V1.1</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -575,13 +575,6 @@
     below.appendChild(box);
   }
 
-  // 안드로이드에서는 바로가기를 크롬 앱으로 열어요 (크롬이 없으면 원래 주소로 열림)
-  function chromeLink(url){
-    if(!/Android/i.test(navigator.userAgent)) return url;
-    try{ const u=new URL(url);
-      return "intent://"+u.host+u.pathname+u.search+u.hash+"#Intent;scheme="+u.protocol.replace(":","")+";package=com.android.chrome;S.browser_fallback_url="+encodeURIComponent(url)+";end";
-    }catch(e){ return url; }
-  }
   function renderMavs(){
     const board=$("board"); board.innerHTML=""; board.className=""; const below=$("below"); below.innerHTML="";
     const now=new Date();
@@ -607,7 +600,7 @@
       ["💬","Reddit r/Mavericks","매버릭스 팬 커뮤니티","https://www.reddit.com/r/Mavericks/"]
     ];
     const lc=document.createElement("div"); lc.className="card";
-    lc.innerHTML="<h3>바로가기</h3>"+links.map(l=>`<a class="lnk" href="${chromeLink(l[3])}" target="_blank" rel="noopener"><div class="ic">${l[0]}</div><div><div class="tt">${l[1]}</div><div class="ss">${l[2]}</div></div><span class="ar">↗</span></a>`).join("");
+    lc.innerHTML="<h3>바로가기</h3>"+links.map(l=>`<a class="lnk" href="${l[3]}" target="_blank" rel="noopener"><div class="ic">${l[0]}</div><div><div class="tt">${l[1]}</div><div class="ss">${l[2]}</div></div><span class="ar">↗</span></a>`).join("");
     wrap.appendChild(lc);
     const rest=up.slice(up.length&&up[0].t<=now?1:1, 6);
     if(rest.length){
