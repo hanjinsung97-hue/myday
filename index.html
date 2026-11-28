@@ -204,6 +204,31 @@
   .tgl{flex:none;width:50px;height:30px;border-radius:15px;border:0;background:var(--line);position:relative;cursor:pointer;transition:background .2s}
   .tgl i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
   .tgl.on{background:var(--accent)}.tgl.on i{left:23px}
+  /* planner */
+  .pl{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px}
+  .pl-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .pl-badge{background:#8f8f8f;color:#fff;font-size:13px;letter-spacing:.08em;padding:5px 14px}
+  .pl-nav{display:flex;gap:6px;align-items:center}
+  .pl-nav button{border:1px solid var(--line);background:var(--bg);color:var(--ink);height:32px;min-width:32px;border-radius:9px;font:inherit;font-size:14px;cursor:pointer;padding:0 8px}
+  .pl-nav button:disabled{opacity:.35}
+  .pl-meta{display:flex;justify-content:space-between;gap:10px;margin-bottom:16px}
+  .pl-lab{border-left:3px solid #9a9a9a;padding-left:8px;font-size:12px;letter-spacing:.06em;color:var(--muted)}
+  .pl-date{white-space:nowrap;font-size:16px;font-weight:500;color:var(--ink);margin-top:2px;letter-spacing:0;cursor:pointer}
+  .pl-dd{flex:0 0 42%;text-align:left}
+  .pl-dd input{border:0;border-bottom:1px dashed var(--line);background:none;color:var(--ink);font:inherit;font-size:15px;width:100%;padding:2px 0;margin-top:2px}
+  .pl-h{font-size:12px;letter-spacing:.06em;color:var(--muted);margin:4px 0 6px;display:flex;justify-content:space-between}
+  .pl-list{border-top:2px solid #8f8f8f}
+  .pl-row{display:flex;align-items:center;border-bottom:1px solid var(--line);min-height:44px}
+  .pl-row .cat{flex:0 0 26%;border:0;border-right:1px solid #8f8f8f;background:none;color:var(--muted);font:inherit;font-size:14px;padding:10px 8px;min-width:0;align-self:stretch}
+  .pl-row .txt{min-height:0;flex:1;border:0;background:none;color:var(--ink);font:inherit;font-size:15px;padding:10px 10px;min-width:0;resize:none;overflow:hidden;line-height:1.4}
+  .pl-row .cat:focus,.pl-row .txt:focus,.pl-dd input:focus,.pl-memo:focus{outline:none;background:color-mix(in srgb,var(--accent) 6%,transparent)}
+  .pl-row .ck{flex:none;width:22px;height:22px;margin:0 6px 0 4px;border:1.5px solid #b5b5b5;border-radius:3px;background:none;cursor:pointer;display:grid;place-items:center;color:#fff;font-size:14px;padding:0}
+  .pl-row.done .ck{background:var(--accent);border-color:var(--accent)}
+  .pl-row.done .txt{text-decoration:line-through;color:var(--muted)}
+  .pl-row.ghost .ck{visibility:hidden}
+  .pl-mh{border-top:1.5px solid #8f8f8f;margin-top:26px;padding-top:6px;font-size:12px;letter-spacing:.06em;color:var(--muted)}
+  .pl-memo{width:100%;border:0;border-bottom:1.5px solid #8f8f8f;background:none;color:var(--ink);font:inherit;font-size:15px;line-height:1.6;padding:8px 2px;min-height:90px;resize:none;overflow:hidden}
+  .pl-saved{font-size:11px;color:var(--muted);text-align:right;margin-top:8px;min-height:14px}
 </style>
 </head>
 <body>
@@ -217,11 +242,12 @@
     <div class="seg" role="tablist">
       <button id="vWeek" class="on">주간</button>
       <button id="vMonth">월간</button>
+      <button id="vPlan">플래너</button>
       <button id="vExp">고정지출</button>
       <button id="vMavs">댈러스</button>
     </div>
   </div>
-  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · V1.1</span></span></div>
+  <div class="progress"><span id="prog"></span><span style="display:flex;align-items:center"><span class="sync"><span id="sync"></span> · V1.2</span></span></div>
 </header>
 <main><div class="strip" id="strip"></div><div class="board" id="board"></div><div id="below"></div></main>
 <button class="fab" id="fab" aria-label="할 일 추가">+</button>
@@ -441,7 +467,7 @@
       if(timedOut) return;
       let data = snap && typeof snap.data === "function" ? snap.data() : snap;
       if(data && data.data && Array.isArray(data.data.tasks)) data = data.data;
-      dbDoc = doc;
+      dbDoc = doc; planDb = db; for(const k in planLoaded) delete planLoaded[k]; if(view==="plan") renderPlanner(true);
       if(data && Array.isArray(data.tasks)){
         state = JSON.parse(JSON.stringify({ tasks: data.tasks, events: Array.isArray(data.events) ? data.events : [], pin: data.pin||null, hideNba: !!data.hideNba, expenses: Array.isArray(data.expenses) ? data.expenses : [] })); if(migrateWeekSrc()) save(); lsSave(); render(); updNbaBtn();
         if(state.pin && !unlocked) showLock("unlock"); else if(!state.pin && lockMode==="unlock") hideLock(); updateLockBtn();
@@ -617,8 +643,9 @@
   }
 
   function render(){
-    $("hdr").classList.toggle("month", view==="month"||view==="mavs"||view==="exp");
-    $("fab").style.display = view==="mavs" ? "none" : "";
+    $("hdr").classList.toggle("month", view==="month"||view==="mavs"||view==="exp"||view==="plan");
+    $("fab").style.display = (view==="mavs"||view==="plan") ? "none" : "";
+    if(view==="plan"){ $("strip").innerHTML=""; renderPlanner(); return; }
     if(view==="exp"){ $("strip").innerHTML=""; renderExp(); return; }
     if(view==="month"){ $("strip").innerHTML=""; renderMonth(); return; }
     if(view==="mavs"){ $("strip").innerHTML=""; renderMavs(); return; }
@@ -642,7 +669,7 @@
   }
 
   function setView(v){
-    view=v; $("vWeek").classList.toggle("on",v==="week"); $("vMonth").classList.toggle("on",v==="month"); $("vMavs").classList.toggle("on",v==="mavs"); $("vExp").classList.toggle("on",v==="exp");
+    view=v; $("vWeek").classList.toggle("on",v==="week"); $("vMonth").classList.toggle("on",v==="month"); $("vMavs").classList.toggle("on",v==="mavs"); $("vExp").classList.toggle("on",v==="exp"); $("vPlan").classList.toggle("on",v==="plan");
     document.documentElement.style.setProperty("--hour", v==="week" ? "44px" : "56px");
     render(); window.scrollTo({top:0});
   }
@@ -650,6 +677,7 @@
   $("vMonth").onclick=()=>setView("month");
   $("vMavs").onclick=()=>setView("mavs");
   $("vExp").onclick=()=>setView("exp");
+  $("vPlan").onclick=()=>setView("plan");
 
   // ---------- date event form ----------
   let eEditing=null, eColor=COLORS[1];
@@ -1017,6 +1045,101 @@
     }catch(e){ $("pushState").textContent=e.message||String(e); }
     $("pushTgl").classList.toggle("on",pushOn); pushBusy=false;
   };
+
+  // ---------- daily planner (다른 탭과 연동 없음) ----------
+  var planDb=null;
+  const planCache={}, planLoaded={}, planTimers={}, planSaving={}, planPending={};
+  let pDate=todayKey;
+  const pAdd=(k,n)=>{ const d=new Date(k+"T00:00"); d.setDate(d.getDate()+n); return ymd(d); };
+  const pMax=()=>pAdd(todayKey,1);
+  const pYm=k=>k.slice(0,7);
+  function pDay(k){ const m=planCache[pYm(k)]||(planCache[pYm(k)]={days:{}}); return m.days[k]||(m.days[k]={rows:[],memo:"",dday:""}); }
+  async function pLoad(ym){
+    if(planLoaded[ym]) return;
+    try{ const v=JSON.parse(localStorage.getItem("naui-planner-"+ym)); if(v&&v.days&&!planCache[ym]) planCache[ym]=v; }catch(e){}
+    if(!planCache[ym]) planCache[ym]={days:{}};
+    if(planDb){
+      try{ const snap=await planDb.collection().doc("planner-"+ym).get(); let d=snap&&typeof snap.data==="function"?snap.data():snap;
+        if(d&&d.days){ planCache[ym]=JSON.parse(JSON.stringify({days:d.days})); try{localStorage.setItem("naui-planner-"+ym,JSON.stringify(planCache[ym]));}catch(e){} }
+        planLoaded[ym]=true;
+      }catch(e){}
+    } else planLoaded[ym]=!!planDb;
+  }
+  function pClean(k){ const d=pDay(k); d.rows=d.rows.filter(r=>(r.t||"").trim()||(r.c||"").trim()); }
+  function pSave(k){
+    const ym=pYm(k);
+    try{ localStorage.setItem("naui-planner-"+ym, JSON.stringify(planCache[ym])); }catch(e){}
+    $("plSaved") && ($("plSaved").textContent="저장 중…");
+    clearTimeout(planTimers[ym]); planTimers[ym]=setTimeout(()=>pFlush(ym),700);
+  }
+  async function pFlush(ym){
+    if(!planDb){ $("plSaved")&&($("plSaved").textContent="이 기기에 저장됨"); return; }
+    if(planSaving[ym]){ planPending[ym]=true; return; } planSaving[ym]=true;
+    const days={}; Object.entries(planCache[ym].days).forEach(([k,d])=>{ const rows=d.rows.filter(r=>(r.t||"").trim()||(r.c||"").trim()); if(rows.length||(d.memo||"").trim()||(d.dday||"").trim()) days[k]={rows,memo:d.memo||"",dday:d.dday||""}; });
+    try{ await planDb.collection().doc("planner-"+ym).set({days, updated:Date.now()}); $("plSaved")&&($("plSaved").textContent="저장됨"); }
+    catch(e){ $("plSaved")&&($("plSaved").textContent="저장 실패 · 이 기기에만 보관"); }
+    planSaving[ym]=false; if(planPending[ym]){ planPending[ym]=false; pFlush(ym); }
+  }
+  const autoGrow=el=>{ el.style.height="auto"; el.style.height=el.scrollHeight+"px"; };
+  function pProgress(){ const d=pDay(pDate), rs=d.rows.filter(r=>(r.t||"").trim()); $("plProg").textContent=rs.length?`${rs.filter(r=>r.done).length}/${rs.length} 완료`:""; }
+  function pRowEl(r, isGhost){
+    const row=document.createElement("div"); row.className="pl-row"+(r.done?" done":"")+(isGhost?" ghost":"");
+    const cat=document.createElement("input"); cat.className="cat"; cat.placeholder=isGhost?"분류":""; cat.value=r.c||""; cat.maxLength=12;
+    const txt=document.createElement("textarea"); txt.className="txt"; txt.rows=1; txt.placeholder=isGhost?"할 일 입력":""; txt.value=r.t||""; txt.maxLength=200;
+    const ck=document.createElement("button"); ck.type="button"; ck.className="ck"; ck.textContent=r.done?"✓":""; ck.setAttribute("aria-label","완료");
+    const d=pDay(pDate);
+    const touch=()=>{
+      if(row.classList.contains("ghost") && (txt.value.trim()||cat.value.trim())){
+        row.classList.remove("ghost"); cat.placeholder=""; txt.placeholder=""; d.rows.push(r);
+        $("plList").appendChild(pRowEl({t:"",c:"",done:false},true));
+      }
+      r.t=txt.value; r.c=cat.value; pSave(pDate); pProgress();
+    };
+    txt.addEventListener("input",()=>{ autoGrow(txt); touch(); });
+    cat.addEventListener("input",touch);
+    txt.addEventListener("keydown",e=>{
+      if(e.key==="Enter" && !e.isComposing){ e.preventDefault(); const nx=row.nextElementSibling; if(nx) nx.querySelector(".txt").focus(); }
+      if(e.key==="Backspace" && !txt.value && !cat.value && !row.classList.contains("ghost")){ e.preventDefault(); const pv=row.previousElementSibling; removeRow(); pv && pv.querySelector(".txt").focus(); }
+    });
+    const removeRow=()=>{ const i=d.rows.indexOf(r); if(i>=0) d.rows.splice(i,1); row.remove(); pSave(pDate); pProgress(); };
+    const blurCheck=()=>setTimeout(()=>{ if(!row.isConnected||row.classList.contains("ghost")) return; if(row.contains(document.activeElement)) return; if(!txt.value.trim()&&!cat.value.trim()) removeRow(); },0);
+    txt.addEventListener("blur",blurCheck); cat.addEventListener("blur",blurCheck);
+    ck.onclick=()=>{ if(row.classList.contains("ghost")) return; r.done=!r.done; row.classList.toggle("done",r.done); ck.textContent=r.done?"✓":""; pSave(pDate); pProgress(); };
+    row.append(cat,txt,ck); setTimeout(()=>autoGrow(txt),0);
+    return row;
+  }
+  async function renderPlanner(force){
+    const board=$("board"); $("below").innerHTML="";
+    if(!force && board.dataset.planner===pDate && board.querySelector(".pl")) return;
+    board.className=""; board.dataset.planner=pDate;
+    if(!planLoaded[pYm(pDate)] || !planCache[pYm(pDate)]){ board.innerHTML='<div class="pl" style="color:var(--muted);font-size:14px">불러오는 중…</div>'; await pLoad(pYm(pDate)); if(view!=="plan") return; }
+    const d=pDay(pDate), dt=new Date(pDate+"T00:00");
+    const rel=pDate===todayKey?" · 오늘":pDate===pMax()?" · 내일":"";
+    board.innerHTML=`<div class="pl">
+      <div class="pl-top"><span class="pl-badge">PLANNER</span>
+        <div class="pl-nav"><button id="plPrev" aria-label="전날">‹</button><button id="plToday">오늘</button><button id="plNext" aria-label="다음날">›</button></div></div>
+      <div class="pl-meta">
+        <div class="pl-lab">DATE<div class="pl-date" id="plDate">${dt.getFullYear()}. ${dt.getMonth()+1}. ${dt.getDate()} (${DAYS[(dt.getDay()+6)%7]})</div>${rel?`<div style="font-size:11px;color:var(--accent);margin-top:2px">${rel.replace(" · ","")}</div>`:""}<input type="date" id="plPick" style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"></div>
+        <div class="pl-lab pl-dd">D-DAY<input id="plDday" placeholder="예: 시험 D-14" maxlength="30"></div>
+      </div>
+      <div class="pl-h"><span>PLANS</span><span id="plProg"></span></div>
+      <div class="pl-list" id="plList"></div>
+      <div class="pl-mh">MEMO</div>
+      <textarea class="pl-memo" id="plMemo" placeholder="메모"></textarea>
+      <div class="pl-saved" id="plSaved"></div>
+    </div>`;
+    const L=$("plList"); d.rows.forEach(r=>L.appendChild(pRowEl(r,false))); L.appendChild(pRowEl({t:"",c:"",done:false},true));
+    $("plDday").value=d.dday||""; $("plDday").oninput=()=>{ d.dday=$("plDday").value; pSave(pDate); };
+    const m=$("plMemo"); m.value=d.memo||""; setTimeout(()=>autoGrow(m),0); m.oninput=()=>{ autoGrow(m); d.memo=m.value; pSave(pDate); };
+    $("plPrev").onclick=()=>pGo(pAdd(pDate,-1));
+    $("plNext").onclick=()=>pGo(pAdd(pDate,1)); $("plNext").disabled=pDate>=pMax();
+    $("plToday").onclick=()=>pGo(todayKey); $("plToday").disabled=pDate===todayKey;
+    const pick=$("plPick"); pick.max=pMax(); pick.value=pDate;
+    $("plDate").onclick=()=>{ try{ pick.showPicker(); }catch(e){ pick.style.pointerEvents="auto"; pick.focus(); pick.click(); } };
+    pick.onchange=()=>{ if(pick.value) pGo(pick.value>pMax()?pMax():pick.value); };
+    pProgress();
+  }
+  function pGo(k){ pClean(pDate); pDate=k; renderPlanner(true); }
 
   render();
   // scroll near current hour
